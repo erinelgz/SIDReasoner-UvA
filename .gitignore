@@ -23,3 +23,13 @@ data_backup/*
 data/*
 rq/*
 .DS_Store
+
+data/
+checkpoints/
+output_dir/
+logs/
+slurm_output/
+temp/
+results/
+.cache/
+.venv/
