@@ -17,6 +17,7 @@ fi
 cd "$SCRIPT_DIR"
 
 source ./scripts/snellius_env.sh
+export WANDB_MODE=disabled
 
 CATEGORY="${CATEGORY:-Office_Products}"
 BASE_MODEL="${BASE_MODEL:-Qwen/Qwen3-1.7B}"
