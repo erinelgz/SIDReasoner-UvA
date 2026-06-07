@@ -17,6 +17,7 @@ fi
 cd "$SCRIPT_DIR"
 
 source ./scripts/snellius_env.sh
+export WANDB_MODE=disabled
 
 CATEGORY="${CATEGORY:-Office_Products}"
 TRAIN_FILE="${TRAIN_FILE:-./data/Amazon/train/Office_Products_5_2016-10-2018-11.csv}"
