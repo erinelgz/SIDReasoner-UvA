@@ -36,6 +36,7 @@ dependencies = [
   "ray[default]",
   "safetensors",
   "sentencepiece",
+  "setuptools",
   "tensordict==0.6.2",
   "torch==2.6.0",
   "torch-memory-saver",
