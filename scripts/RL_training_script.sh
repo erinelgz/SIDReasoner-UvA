@@ -25,6 +25,7 @@ fi
 cd "$SCRIPT_DIR"
 
 source ./scripts/snellius_env.sh
+export WANDB_MODE=disabled
 
 # ================================
 # Note: please change the number of GPUs and nodes according to your setup.
@@ -69,7 +70,7 @@ ${PYTHON_CMD} -m verl.trainer.main_ppo \
     actor_rollout_ref.ref.fsdp_config.param_offload=True \
     algorithm.use_kl_in_reward=False \
     trainer.critic_warmup=0 \
-    trainer.logger=['console','wandb'] \
+    trainer.logger=['console'] \
     custom_reward_function.path="./verl/utils/reward_score/direct_recommendation_StepRule_Office.py" \
     custom_reward_function.name="rule_base_reward" \
     trainer.project_name='RecRL_Reasoning' \
