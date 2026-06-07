@@ -25,7 +25,9 @@ fi
 cd "$SCRIPT_DIR"
 
 source ./scripts/snellius_env.sh
-export WANDB_MODE=disabled
+export SIDREASONER_PROJECT_DIR="${SIDREASONER_PROJECT_DIR:-$SCRIPT_DIR}"
+export WANDB_MODE="${WANDB_MODE:-disabled}"
+unset ROCR_VISIBLE_DEVICES HIP_VISIBLE_DEVICES
 
 # ================================
 # Note: please change the number of GPUs and nodes according to your setup.
@@ -33,17 +35,22 @@ export WANDB_MODE=disabled
 n_gpus_per_node="${N_GPUS_PER_NODE:-4}"
 nnodes="${NNODES:-1}"
 experiment_name="${EXPERIMENT_NAME:-Office_Products_stage3_rl_Qwen3-1.7B}"
-stage2_checkpoint="${STAGE2_CHECKPOINT:-./output_dir/Office_Products_stage2_reasoning_activation_Qwen3-1.7B/final_checkpoint}"
+stage2_checkpoint="${STAGE2_CHECKPOINT:-${SCRIPT_DIR}/output_dir/Office_Products_stage2_reasoning_activation_Qwen3-1.7B/final_checkpoint}"
+train_files="${TRAIN_FILES:-${SCRIPT_DIR}/data/Amazon/rec_reasoning_verl/Office_Products/train.parquet}"
+val_files="${VAL_FILES:-${SCRIPT_DIR}/data/Amazon/rec_reasoning_verl/Office_Products/test.parquet}"
+checkpoint_dir="${CHECKPOINT_DIR:-${SCRIPT_DIR}/checkpoints/RecRL_Reasoning/${experiment_name}}"
+reward_file="${REWARD_FILE:-${SCRIPT_DIR}/verl/utils/reward_score/direct_recommendation_StepRule_Office.py}"
+trainer_logger="${TRAINER_LOGGER:-['console']}"
 log_file="${LOG_FILE:-./logs/${experiment_name}.log}"
 # ================================
 
-mkdir -p ./logs
+mkdir -p ./logs "${checkpoint_dir}"
 
 {
 ${PYTHON_CMD} -m verl.trainer.main_ppo \
     algorithm.adv_estimator=grpo \
-    data.train_files=./data/Amazon/rec_reasoning_verl/Office_Products/train.parquet \
-    data.val_files=./data/Amazon/rec_reasoning_verl/Office_Products/test.parquet \
+    data.train_files="${train_files}" \
+    data.val_files="${val_files}" \
     data.train_batch_size=256 \
     data.max_prompt_length=1024 \
     data.max_response_length=1024 \
@@ -70,11 +77,12 @@ ${PYTHON_CMD} -m verl.trainer.main_ppo \
     actor_rollout_ref.ref.fsdp_config.param_offload=True \
     algorithm.use_kl_in_reward=False \
     trainer.critic_warmup=0 \
-    trainer.logger=['console'] \
-    custom_reward_function.path="./verl/utils/reward_score/direct_recommendation_StepRule_Office.py" \
+    trainer.logger="${trainer_logger}" \
+    custom_reward_function.path="${reward_file}" \
     custom_reward_function.name="rule_base_reward" \
     trainer.project_name='RecRL_Reasoning' \
     trainer.experiment_name="${experiment_name}" \
+    trainer.default_local_dir="${checkpoint_dir}" \
     trainer.n_gpus_per_node=$n_gpus_per_node \
     trainer.nnodes=$nnodes \
     trainer.save_freq=100 \
