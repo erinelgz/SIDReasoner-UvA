@@ -12,14 +12,16 @@ original IDs that may go up to 3x the actual item count).
 Output: data/<dataset>.txt  with rows "user_id item_id" (1-indexed integers,
 chronological order per user).
 """
+
 import argparse
 import ast
 import os
 import pandas as pd
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--data_dir", required=True,
-                    help="Path to SIDReasoner Amazon data dir (e.g. /path/to/SIDReasoner-UvA/data/Amazon)")
+parser.add_argument(
+    "--data_dir", required=True, help="Path to SIDReasoner Amazon data dir (e.g. /path/to/SIDReasoner-UvA/data/Amazon)"
+)
 args = parser.parse_args()
 DATA_DIR = args.data_dir
 
@@ -32,7 +34,7 @@ DATASETS = [
 for dataset in DATASETS:
     train_df = pd.read_csv(f"{DATA_DIR}/train/{dataset}.csv")
     valid_df = pd.read_csv(f"{DATA_DIR}/valid/{dataset}.csv")
-    test_df  = pd.read_csv(f"{DATA_DIR}/test/{dataset}.csv")
+    test_df = pd.read_csv(f"{DATA_DIR}/test/{dataset}.csv")
 
     # Only keep users present in all three splits
     common = set(train_df.user_id) & set(valid_df.user_id) & set(test_df.user_id)
@@ -49,7 +51,7 @@ for dataset in DATASETS:
     # Original ID 0 is a padding placeholder in history_item_id — skip it.
     raw_items = []
     for _, row in last_test.iterrows():
-        history   = ast.literal_eval(row["history_item_id"])
+        history = ast.literal_eval(row["history_item_id"])
         test_item = int(row["item_id"])
         for iid in history + [test_item]:
             if iid != 0:
@@ -61,8 +63,8 @@ for dataset in DATASETS:
     # Second pass: write interactions using remapped IDs.
     rows = []
     for _, row in last_test.iterrows():
-        uid       = user_map[row["user_id"]]
-        history   = ast.literal_eval(row["history_item_id"])
+        uid = user_map[row["user_id"]]
+        history = ast.literal_eval(row["history_item_id"])
         test_item = int(row["item_id"])
         for iid in history + [test_item]:
             if iid != 0:
@@ -77,5 +79,4 @@ for dataset in DATASETS:
     n_users = len(user_ids)
     n_items = len(unique_items)
     n_interactions = len(rows)
-    print(f"{dataset}: {n_users} users, {n_items} unique items, "
-          f"{n_interactions} interactions -> {out_path}")
+    print(f"{dataset}: {n_users} users, {n_items} unique items, {n_interactions} interactions -> {out_path}")

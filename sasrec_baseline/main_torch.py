@@ -11,42 +11,48 @@ from tqdm import tqdm
 
 
 def str2bool(s):
-    return s == 'True'
+    return s == "True"
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', required=True)
-parser.add_argument('--train_dir', required=True)
-parser.add_argument('--batch_size', default=128, type=int)
-parser.add_argument('--lr', default=0.001, type=float)
-parser.add_argument('--maxlen', default=50, type=int)
-parser.add_argument('--hidden_units', default=64, type=int)
-parser.add_argument('--num_blocks', default=2, type=int)
-parser.add_argument('--num_epochs', default=201, type=int)
-parser.add_argument('--num_heads', default=1, type=int)
-parser.add_argument('--dropout_rate', default=0.5, type=float)
-parser.add_argument('--l2_emb', default=0.0, type=float)
-parser.add_argument('--full_ranking', action='store_true',
-                    help='Evaluate by ranking all items (full ranking) instead of 100 negatives')
-parser.add_argument('--loss_type', default='bce', choices=['bce', 'ce'],
-                    help='bce: original 1-negative BCE; ce: softmax CE over all items (matches full-ranking training)')
+parser.add_argument("--dataset", required=True)
+parser.add_argument("--train_dir", required=True)
+parser.add_argument("--batch_size", default=128, type=int)
+parser.add_argument("--lr", default=0.001, type=float)
+parser.add_argument("--maxlen", default=50, type=int)
+parser.add_argument("--hidden_units", default=64, type=int)
+parser.add_argument("--num_blocks", default=2, type=int)
+parser.add_argument("--num_epochs", default=201, type=int)
+parser.add_argument("--num_heads", default=1, type=int)
+parser.add_argument("--dropout_rate", default=0.5, type=float)
+parser.add_argument("--l2_emb", default=0.0, type=float)
+parser.add_argument(
+    "--full_ranking", action="store_true", help="Evaluate by ranking all items (full ranking) instead of 100 negatives"
+)
+parser.add_argument(
+    "--loss_type",
+    default="bce",
+    choices=["bce", "ce"],
+    help="bce: original 1-negative BCE; ce: softmax CE over all items (matches full-ranking training)",
+)
 args = parser.parse_args()
 
-device = torch.device('cpu')
+device = torch.device("cpu")
 
 
 # ---------------------------------------------------------------------------
 # Data
 # ---------------------------------------------------------------------------
 
+
 def data_partition(fname):
     usernum = 0
     itemnum = 0
     User = defaultdict(list)
     user_train, user_valid, user_test = {}, {}, {}
-    with open('data/%s.txt' % fname) as f:
+    with open("data/%s.txt" % fname) as f:
         for line in f:
-            u, i = line.rstrip().split(' ')
+            u, i = line.rstrip().split(" ")
             u, i = int(u), int(i)
             usernum = max(u, usernum)
             itemnum = max(i, itemnum)
@@ -103,6 +109,7 @@ def sample_batch(user_train, usernum, itemnum, batch_size, maxlen, need_neg=True
 # Model
 # ---------------------------------------------------------------------------
 
+
 class PointWiseFeedForward(nn.Module):
     def __init__(self, hidden_units, dropout_rate):
         super().__init__()
@@ -124,7 +131,7 @@ class SASRec(nn.Module):
         super().__init__()
         self.args = args
         self.item_emb = nn.Embedding(itemnum + 1, args.hidden_units, padding_idx=0)
-        self.pos_emb  = nn.Embedding(args.maxlen + 1, args.hidden_units)
+        self.pos_emb = nn.Embedding(args.maxlen + 1, args.hidden_units)
         self.emb_dropout = nn.Dropout(args.dropout_rate)
 
         self.attn_norms = nn.ModuleList()
@@ -134,8 +141,7 @@ class SASRec(nn.Module):
         for _ in range(args.num_blocks):
             self.attn_norms.append(nn.LayerNorm(args.hidden_units, eps=1e-8))
             self.attn_layers.append(
-                nn.MultiheadAttention(args.hidden_units, args.num_heads,
-                                      dropout=args.dropout_rate, batch_first=True)
+                nn.MultiheadAttention(args.hidden_units, args.num_heads, dropout=args.dropout_rate, batch_first=True)
             )
             self.ff_norms.append(nn.LayerNorm(args.hidden_units, eps=1e-8))
             self.ff_layers.append(PointWiseFeedForward(args.hidden_units, args.dropout_rate))
@@ -143,18 +149,17 @@ class SASRec(nn.Module):
 
     def log2feats(self, log_seqs):
         # log_seqs: (batch, maxlen) int64, 0 = padding
-        seqs = self.item_emb(log_seqs) * (self.args.hidden_units ** 0.5)
+        seqs = self.item_emb(log_seqs) * (self.args.hidden_units**0.5)
         positions = torch.arange(1, log_seqs.size(1) + 1, device=log_seqs.device).unsqueeze(0)
         seqs = self.emb_dropout(seqs + self.pos_emb(positions))
 
-        pad_mask = (log_seqs == 0)  # (batch, maxlen) — True = padded
+        pad_mask = log_seqs == 0  # (batch, maxlen) — True = padded
         causal_mask = torch.triu(
-            torch.full((log_seqs.size(1), log_seqs.size(1)), float('-inf'), device=log_seqs.device),
+            torch.full((log_seqs.size(1), log_seqs.size(1)), float("-inf"), device=log_seqs.device),
             diagonal=1,
         )
 
-        for attn_norm, attn, ff_norm, ff in zip(
-                self.attn_norms, self.attn_layers, self.ff_norms, self.ff_layers):
+        for attn_norm, attn, ff_norm, ff in zip(self.attn_norms, self.attn_layers, self.ff_norms, self.ff_layers):
             # Pre-norm, attention, residual (residual with normalised input, matching original)
             Q = attn_norm(seqs)
             # No key_padding_mask: mixing float attn_mask with bool key_padding_mask
@@ -180,12 +185,13 @@ class SASRec(nn.Module):
 
     def predict(self, log_seqs, items):
         feats = self.log2feats(log_seqs)[:, -1, :]  # (batch, hidden)
-        return feats @ self.item_emb(items).T         # (batch, n_items)
+        return feats @ self.item_emb(items).T  # (batch, n_items)
 
 
 # ---------------------------------------------------------------------------
 # Evaluation
 # ---------------------------------------------------------------------------
+
 
 def build_seq(history, maxlen):
     seq = np.zeros(maxlen, dtype=np.int64)
@@ -198,14 +204,12 @@ def build_seq(history, maxlen):
     return seq
 
 
-def evaluate_split(model, user_target, user_seq_history, user_exclude,
-                   usernum, itemnum, args):
+def evaluate_split(model, user_target, user_seq_history, user_exclude, usernum, itemnum, args):
     model.eval()
-    metrics = {k: 0.0 for k in ('Recall@5', 'Recall@10', 'NDCG@5', 'NDCG@10')}
+    metrics = {k: 0.0 for k in ("Recall@5", "Recall@10", "NDCG@5", "NDCG@10")}
     n = 0
 
-    users = (range(1, usernum + 1) if usernum <= 10000
-             else random.sample(range(1, usernum + 1), 10000))
+    users = range(1, usernum + 1) if usernum <= 10000 else random.sample(range(1, usernum + 1), 10000)
 
     all_items = torch.arange(1, itemnum + 1, device=device) if args.full_ranking else None
 
@@ -243,11 +247,11 @@ def evaluate_split(model, user_target, user_seq_history, user_exclude,
 
             n += 1
             if rank < 5:
-                metrics['Recall@5']  += 1
-                metrics['NDCG@5']    += 1 / np.log2(rank + 2)
+                metrics["Recall@5"] += 1
+                metrics["NDCG@5"] += 1 / np.log2(rank + 2)
             if rank < 10:
-                metrics['Recall@10'] += 1
-                metrics['NDCG@10']   += 1 / np.log2(rank + 2)
+                metrics["Recall@10"] += 1
+                metrics["NDCG@10"] += 1 / np.log2(rank + 2)
 
     model.train()
     return {k: v / n for k, v in metrics.items()} if n > 0 else metrics
@@ -259,36 +263,34 @@ def evaluate_split(model, user_target, user_seq_history, user_exclude,
 
 user_train, user_valid, user_test, usernum, itemnum = data_partition(args.dataset)
 
-print('Users: %d  Items: %d' % (usernum, itemnum))
+print("Users: %d  Items: %d" % (usernum, itemnum))
 avg_len = sum(len(v) for v in user_train.values()) / max(len(user_train), 1)
-print('Average sequence length: %.2f' % avg_len)
+print("Average sequence length: %.2f" % avg_len)
 
-out_dir = '%s_%s' % (args.dataset, args.train_dir)
+out_dir = "%s_%s" % (args.dataset, args.train_dir)
 os.makedirs(out_dir, exist_ok=True)
-with open(os.path.join(out_dir, 'args.txt'), 'w') as f:
-    f.write('\n'.join('%s,%s' % kv for kv in sorted(vars(args).items())))
+with open(os.path.join(out_dir, "args.txt"), "w") as f:
+    f.write("\n".join("%s,%s" % kv for kv in sorted(vars(args).items())))
 
 model = SASRec(itemnum, args).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.98))
 
 num_batch = max(len(user_train) // args.batch_size, 1)
-log_file = open(os.path.join(out_dir, 'log.txt'), 'w')
+log_file = open(os.path.join(out_dir, "log.txt"), "w")
 
 T = 0.0
 t0 = time.time()
 
 # Precompute test history (train + valid) once
-user_test_history = {u: user_train.get(u, []) + user_valid.get(u, [])
-                     for u in range(1, usernum + 1)}
+user_test_history = {u: user_train.get(u, []) + user_valid.get(u, []) for u in range(1, usernum + 1)}
 
 for epoch in range(1, args.num_epochs + 1):
     model.train()
-    for _ in tqdm(range(num_batch), ncols=70, leave=False, unit='b'):
-        if args.loss_type == 'ce':
-            seqs, pos, _ = sample_batch(user_train, usernum, itemnum,
-                                        args.batch_size, args.maxlen, need_neg=False)
+    for _ in tqdm(range(num_batch), ncols=70, leave=False, unit="b"):
+        if args.loss_type == "ce":
+            seqs, pos, _ = sample_batch(user_train, usernum, itemnum, args.batch_size, args.maxlen, need_neg=False)
             seqs = torch.LongTensor(seqs).to(device)
-            pos  = torch.LongTensor(pos).to(device)
+            pos = torch.LongTensor(pos).to(device)
 
             # Score against all items (item IDs 1..itemnum → indices 0..itemnum-1)
             feats = model.log2feats(seqs)  # (batch, maxlen, hidden)
@@ -304,11 +306,10 @@ for epoch in range(1, args.num_epochs + 1):
                 targets[is_target],
             )
         else:
-            seqs, pos, neg = sample_batch(user_train, usernum, itemnum,
-                                          args.batch_size, args.maxlen, need_neg=True)
+            seqs, pos, neg = sample_batch(user_train, usernum, itemnum, args.batch_size, args.maxlen, need_neg=True)
             seqs = torch.LongTensor(seqs).to(device)
-            pos  = torch.LongTensor(pos).to(device)
-            neg  = torch.LongTensor(neg).to(device)
+            pos = torch.LongTensor(pos).to(device)
+            neg = torch.LongTensor(neg).to(device)
 
             pos_logits, neg_logits = model(seqs, pos, neg)
             is_target = (pos != 0).float()
@@ -326,25 +327,27 @@ for epoch in range(1, args.num_epochs + 1):
         optimizer.step()
 
     if epoch % 20 == 0:
-        print(f'[epoch {epoch}] loss={loss.item():.6f}', flush=True)
+        print(f"[epoch {epoch}] loss={loss.item():.6f}", flush=True)
         t1 = time.time() - t0
         T += t1
-        print('Evaluating', end=' ', flush=True)
+        print("Evaluating", end=" ", flush=True)
 
-        t_valid = evaluate_split(model, user_valid, user_train, user_train,
-                                 usernum, itemnum, args)
-        t_test  = evaluate_split(model, user_test,  user_test_history, user_test_history,
-                                 usernum, itemnum, args)
+        t_valid = evaluate_split(model, user_valid, user_train, user_train, usernum, itemnum, args)
+        t_test = evaluate_split(model, user_test, user_test_history, user_test_history, usernum, itemnum, args)
         print()
-        print('epoch:%d, time: %.1fs' % (epoch, T))
-        print('  valid  Recall@5: %.4f  Recall@10: %.4f  NDCG@5: %.4f  NDCG@10: %.4f' % (
-            t_valid['Recall@5'], t_valid['Recall@10'], t_valid['NDCG@5'], t_valid['NDCG@10']))
-        print('  test   Recall@5: %.4f  Recall@10: %.4f  NDCG@5: %.4f  NDCG@10: %.4f' % (
-            t_test['Recall@5'],  t_test['Recall@10'],  t_test['NDCG@5'],  t_test['NDCG@10']))
+        print("epoch:%d, time: %.1fs" % (epoch, T))
+        print(
+            "  valid  Recall@5: %.4f  Recall@10: %.4f  NDCG@5: %.4f  NDCG@10: %.4f"
+            % (t_valid["Recall@5"], t_valid["Recall@10"], t_valid["NDCG@5"], t_valid["NDCG@10"])
+        )
+        print(
+            "  test   Recall@5: %.4f  Recall@10: %.4f  NDCG@5: %.4f  NDCG@10: %.4f"
+            % (t_test["Recall@5"], t_test["Recall@10"], t_test["NDCG@5"], t_test["NDCG@10"])
+        )
 
-        log_file.write('epoch:%d valid %s test %s\n' % (epoch, t_valid, t_test))
+        log_file.write("epoch:%d valid %s test %s\n" % (epoch, t_valid, t_test))
         log_file.flush()
         t0 = time.time()
 
 log_file.close()
-print('Done')
+print("Done")
