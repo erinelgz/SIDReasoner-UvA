@@ -56,27 +56,36 @@ import pandas as pd
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
+
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--tar_path", default="/gpfs/home2/scur1223/yelp_dataset.tar")
     p.add_argument("--out_dir", default="./data/Yelp")
-    p.add_argument("--category", default="Restaurants",
-                   help="Top-level Yelp category filter, or 'all' to keep everything")
-    p.add_argument("--min_interactions", type=int, default=5,
-                   help="k-core filter: keep users/items with >= k interactions")
-    p.add_argument("--max_seq_len", type=int, default=10,
-                   help="Truncate user history to this many items (most recent)")
-    p.add_argument("--max_users", type=int, default=-1,
-                   help="Randomly subsample this many users after k-core filtering "
-                        "(-1 = keep all). Item index files always cover all items.")
-    p.add_argument("--amazon_general_path",
-                   default="./data/Amazon/general/sampled_data.arrow",
-                   help="Path to the Amazon general reasoning file to symlink")
+    p.add_argument(
+        "--category", default="Restaurants", help="Top-level Yelp category filter, or 'all' to keep everything"
+    )
+    p.add_argument(
+        "--min_interactions", type=int, default=5, help="k-core filter: keep users/items with >= k interactions"
+    )
+    p.add_argument("--max_seq_len", type=int, default=10, help="Truncate user history to this many items (most recent)")
+    p.add_argument(
+        "--max_users",
+        type=int,
+        default=-1,
+        help="Randomly subsample this many users after k-core filtering "
+        "(-1 = keep all). Item index files always cover all items.",
+    )
+    p.add_argument(
+        "--amazon_general_path",
+        default="./data/Amazon/general/sampled_data.arrow",
+        help="Path to the Amazon general reasoning file to symlink",
+    )
     p.add_argument("--seed", type=int, default=42)
     return p.parse_args()
 
 
 # ── Data loading ──────────────────────────────────────────────────────────────
+
 
 def load_businesses_from_tar(tar_path, category_filter):
     """Return {business_id: meta_dict} for businesses matching the category."""
@@ -119,22 +128,21 @@ def kcore_filter(df, k):
     while True:
         item_counts = df["business_id"].value_counts()
         user_counts = df["user_id"].value_counts()
-        mask = (
-            df["business_id"].map(item_counts) >= k
-        ) & (
-            df["user_id"].map(user_counts) >= k
-        )
+        mask = (df["business_id"].map(item_counts) >= k) & (df["user_id"].map(user_counts) >= k)
         filtered = df[mask]
         if len(filtered) == len(df):
             break
         df = filtered.reset_index(drop=True)
-    print(f"  {df['user_id'].nunique():,} users, "
-          f"{df['business_id'].nunique():,} items, "
-          f"{len(df):,} interactions after {k}-core")
+    print(
+        f"  {df['user_id'].nunique():,} users, "
+        f"{df['business_id'].nunique():,} items, "
+        f"{len(df):,} interactions after {k}-core"
+    )
     return df
 
 
 # ── ID mapping ────────────────────────────────────────────────────────────────
+
 
 def build_id_maps(df, businesses):
     """Map business_id → int item_id, user_id → int user_id (for CSV)."""
@@ -146,6 +154,7 @@ def build_id_maps(df, businesses):
 
 
 # ── Semantic ID assignment ────────────────────────────────────────────────────
+
 
 def _extract_categories(biz):
     """Return list of non-empty category strings for a business."""
@@ -194,8 +203,7 @@ def assign_semantic_ids(item_ids, businesses, codebook_size=256):
     for a_code, ctr in sub_cat_counter.items():
         sub_cats = [cat for cat, _ in ctr.most_common()]
         # Reserve code 0 for "no sub-category"
-        sub_cat2b[a_code] = {cat: min(i + 1, codebook_size - 1)
-                              for i, cat in enumerate(sub_cats)}
+        sub_cat2b[a_code] = {cat: min(i + 1, codebook_size - 1) for i, cat in enumerate(sub_cats)}
 
     # Assign IDs
     bucket_counters = collections.defaultdict(int)
@@ -229,6 +237,7 @@ def sid_tokens(a, b, c):
 
 # ── Sequence splitting ────────────────────────────────────────────────────────
 
+
 def build_user_sequences(df, item2int, user2int, max_seq_len):
     """
     Return dict: user_int → list of int item_ids in interaction order.
@@ -244,6 +253,7 @@ def build_user_sequences(df, item2int, user2int, max_seq_len):
 
 
 # ── CSV row generation ────────────────────────────────────────────────────────
+
 
 def _history_titles(history_ids, int2title):
     return [int2title[i] for i in history_ids]
@@ -271,7 +281,23 @@ def build_split_rows(seqs, int2title, sid_map, split):
             for t in range(1, len(seq) - 2):
                 hist = seq[:t]
                 target = seq[t]
-                rows.append({
+                rows.append(
+                    {
+                        "user_id": uid,
+                        "history_item_title": str(_history_titles(hist, int2title)),
+                        "item_title": int2title[target],
+                        "history_item_id": str(hist),
+                        "item_id": target,
+                        "history_item_sid": str(_history_sids(hist, sid_map)),
+                        "item_sid": sid_str(*sid_map[target]),
+                    }
+                )
+
+        elif split == "valid":
+            hist = seq[:-2]
+            target = seq[-2]
+            rows.append(
+                {
                     "user_id": uid,
                     "history_item_title": str(_history_titles(hist, int2title)),
                     "item_title": int2title[target],
@@ -279,38 +305,29 @@ def build_split_rows(seqs, int2title, sid_map, split):
                     "item_id": target,
                     "history_item_sid": str(_history_sids(hist, sid_map)),
                     "item_sid": sid_str(*sid_map[target]),
-                })
-
-        elif split == "valid":
-            hist = seq[:-2]
-            target = seq[-2]
-            rows.append({
-                "user_id": uid,
-                "history_item_title": str(_history_titles(hist, int2title)),
-                "item_title": int2title[target],
-                "history_item_id": str(hist),
-                "item_id": target,
-                "history_item_sid": str(_history_sids(hist, sid_map)),
-                "item_sid": sid_str(*sid_map[target]),
-            })
+                }
+            )
 
         elif split == "test":
             hist = seq[:-1]
             target = seq[-1]
-            rows.append({
-                "user_id": uid,
-                "history_item_title": str(_history_titles(hist, int2title)),
-                "item_title": int2title[target],
-                "history_item_id": str(hist),
-                "item_id": target,
-                "history_item_sid": str(_history_sids(hist, sid_map)),
-                "item_sid": sid_str(*sid_map[target]),
-            })
+            rows.append(
+                {
+                    "user_id": uid,
+                    "history_item_title": str(_history_titles(hist, int2title)),
+                    "item_title": int2title[target],
+                    "history_item_id": str(hist),
+                    "item_id": target,
+                    "history_item_sid": str(_history_sids(hist, sid_map)),
+                    "item_sid": sid_str(*sid_map[target]),
+                }
+            )
 
     return pd.DataFrame(rows)
 
 
 # ── LLM-enriched placeholder generation ──────────────────────────────────────
+
 
 def build_item_json(item_ids, businesses):
     """Build item.json: {str(int_id): {title, description, brand, categories}}."""
@@ -430,19 +447,22 @@ def build_integrated_narrative_csv(train_df, int2title, sid_map):
             f"the categorical overlap and the quality signals evident in the prior interactions."
         )
 
-        rows.append({
-            **row.to_dict(),
-            "reasoning_path": (
-                f"Given the history {hist_str}, the user shows interest in similar businesses. "
-                f"The next item {target_sid} fits this pattern."
-            ),
-            "integrated_narrative": narrative,
-        })
+        rows.append(
+            {
+                **row.to_dict(),
+                "reasoning_path": (
+                    f"Given the history {hist_str}, the user shows interest in similar businesses. "
+                    f"The next item {target_sid} fits this pattern."
+                ),
+                "integrated_narrative": narrative,
+            }
+        )
 
     return pd.DataFrame(rows)
 
 
 # ── Write helpers ─────────────────────────────────────────────────────────────
+
 
 def write_info_file(path, item_ids, businesses, sid_map):
     """Write info/<DATASET>.txt: one line per item: <sid>\t<name>\t<int_id>"""
@@ -452,11 +472,12 @@ def write_info_file(path, item_ids, businesses, sid_map):
             biz = businesses.get(bid, {})
             name = biz.get("name", "Unknown").replace("\t", " ")
             a, b, c = sid_map[int_id]
-            f.write(f"{sid_str(a,b,c)}\t{name}\t{int_id}\n")
+            f.write(f"{sid_str(a, b, c)}\t{name}\t{int_id}\n")
     print(f"  Wrote {len(item_ids)} items → {path}")
 
 
 # ── RL parquet creation ───────────────────────────────────────────────────────
+
 
 def build_rl_parquet(df, category_name, split, out_path):
     """Convert a split CSV into the VERL parquet format for RL training."""
@@ -484,18 +505,20 @@ def build_rl_parquet(df, category_name, split, out_path):
             {"role": "user", "content": prompt_text},
         ]
 
-        rows.append({
-            "data_source": data_source,
-            "prompt": messages,
-            "ability": "Recommendation",
-            "reward_model": {"style": "rule", "ground_truth": target_sid},
-            "extra_info": {
-                "split": split,
-                "index": len(rows),
-                "answer": target_sid,
-                "question": messages,
-            },
-        })
+        rows.append(
+            {
+                "data_source": data_source,
+                "prompt": messages,
+                "ability": "Recommendation",
+                "reward_model": {"style": "rule", "ground_truth": target_sid},
+                "extra_info": {
+                    "split": split,
+                    "index": len(rows),
+                    "answer": target_sid,
+                    "question": messages,
+                },
+            }
+        )
 
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     pd.DataFrame(rows).to_parquet(out_path, index=False)
@@ -503,6 +526,7 @@ def build_rl_parquet(df, category_name, split, out_path):
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
+
 
 def main():
     args = parse_args()
@@ -528,13 +552,13 @@ def main():
 
     # ── 6. User subsampling (interactions only; item index files keep all items) ──
     import random as _random
+
     _random.seed(args.seed)
     all_users = list(user2int.keys())
     if args.max_users > 0 and args.max_users < len(all_users):
         sampled_users = set(_random.sample(all_users, args.max_users))
         df_interactions = df[df["user_id"].isin(sampled_users)].reset_index(drop=True)
-        print(f"Subsampled to {len(sampled_users):,} users "
-              f"({len(df_interactions):,} interactions)")
+        print(f"Subsampled to {len(sampled_users):,} users ({len(df_interactions):,} interactions)")
     else:
         df_interactions = df
         sampled_users = set(all_users)
@@ -551,7 +575,7 @@ def main():
     print("Building train/valid/test splits ...")
     train_df = build_split_rows(seqs, int2title, sid_map, "train")
     valid_df = build_split_rows(seqs, int2title, sid_map, "valid")
-    test_df  = build_split_rows(seqs, int2title, sid_map, "test")
+    test_df = build_split_rows(seqs, int2title, sid_map, "test")
     print(f"  train: {len(train_df):,}  valid: {len(valid_df):,}  test: {len(test_df):,}")
 
     # ── 8. Write CSVs ──
@@ -601,14 +625,16 @@ def main():
         os.symlink(symlink_src, symlink_dst)
         print(f"  Symlinked general data → {symlink_src}")
     else:
-        print(f"  WARNING: Amazon general data not found at {symlink_src}. "
-              f"Set --amazon_general_path or provide the file manually.")
+        print(
+            f"  WARNING: Amazon general data not found at {symlink_src}. "
+            f"Set --amazon_general_path or provide the file manually."
+        )
 
     # ── 13. RL parquet files ──
     print("Building RL parquet files ...")
     rl_dir = out / "rec_reasoning_verl" / category_slug
     build_rl_parquet(train_df, category_slug, "train", str(rl_dir / "train.parquet"))
-    build_rl_parquet(test_df,  category_slug, "test",  str(rl_dir / "test.parquet"))
+    build_rl_parquet(test_df, category_slug, "test", str(rl_dir / "test.parquet"))
 
     # ── 14. Print summary ──
     print()
