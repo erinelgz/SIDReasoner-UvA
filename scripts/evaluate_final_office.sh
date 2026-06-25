@@ -16,7 +16,7 @@ else
     PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fi
 cd "$PROJECT_DIR"
-source ./scripts/snellius_env.sh
+source ./scripts/snellius_environment.sh
 
 readonly TEST_FILE="${PROJECT_DIR}/data/Amazon/test/Office_Products_5_2016-10-2018-11.csv"
 readonly TEST_SHA256="c1967034e197a7837a8962f2556efaabc12eb5bb84e1fdc79cd0accbce71add5"

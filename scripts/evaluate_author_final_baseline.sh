@@ -19,7 +19,7 @@ else
     project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fi
 cd "$project_dir"
-source ./scripts/snellius_env.sh
+source ./scripts/snellius_environment.sh
 
 artifact_root="${ARTIFACT_ROOT:-/gpfs/work5/0/prjs2120/groups/group_06/checkpoints/SIDReasoner/author_final_baseline_test_20260623}"
 model_path="${AUTHOR_STAGE3_MODEL:-${artifact_root}/author_stage3_model}"

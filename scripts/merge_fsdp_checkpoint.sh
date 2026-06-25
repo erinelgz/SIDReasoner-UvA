@@ -22,7 +22,7 @@ else
 fi
 cd "$SCRIPT_DIR"
 
-source ./scripts/snellius_env.sh
+source ./scripts/snellius_environment.sh
 export PYTHONPATH="$SCRIPT_DIR:${PYTHONPATH:-}"
 
 CKPT_DIR="${1:-${CKPT_DIR:-./checkpoints/RecRL_Reasoning/Office_Products_stage3_rl_Qwen3-1.7B/global_step_100/actor}}"

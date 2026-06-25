@@ -10,7 +10,7 @@
 
 set -euo pipefail
 
-source ./scripts/snellius_env.sh
+source ./scripts/snellius_environment.sh
 export WANDB_MODE=disabled
 
 CATEGORY="${CATEGORY:-Yelp_Restaurants}"

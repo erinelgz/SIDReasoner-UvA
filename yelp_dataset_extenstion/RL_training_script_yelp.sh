@@ -11,7 +11,7 @@
 set -euo pipefail
 set -x
 
-source ./scripts/snellius_env.sh
+source ./scripts/snellius_environment.sh
 SCRIPT_DIR="$(pwd)"
 export SIDREASONER_PROJECT_DIR="${SIDREASONER_PROJECT_DIR:-${SCRIPT_DIR}}"
 export SIDREASONER_YELP_INFO_FILE="${SCRIPT_DIR}/data/Yelp/info/Yelp_Restaurants_5core.txt"

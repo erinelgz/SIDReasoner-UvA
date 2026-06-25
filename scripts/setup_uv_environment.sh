@@ -33,7 +33,7 @@ for arg in "$@"; do
             ;;
         *)
             echo "Unknown argument: $arg"
-            echo "Usage: sbatch scripts/setup_uv_env.sh [--sglang] [--megatron] [--all]"
+            echo "Usage: sbatch scripts/setup_uv_environment.sh [--sglang] [--megatron] [--all]"
             exit 2
             ;;
     esac

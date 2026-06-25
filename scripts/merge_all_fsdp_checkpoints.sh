@@ -22,7 +22,7 @@ else
 fi
 cd "$SCRIPT_DIR"
 
-source ./scripts/snellius_env.sh
+source ./scripts/snellius_environment.sh
 
 CKPT_ROOT="${CKPT_ROOT:-./checkpoints/RecRL_Reasoning/Office_Products_stage3_rl_Qwen3-1.7B}"
 EVAL_INTERVAL="${EVAL_INTERVAL:-100}"

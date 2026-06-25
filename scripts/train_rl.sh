@@ -24,7 +24,7 @@ else
 fi
 cd "$SCRIPT_DIR"
 
-source ./scripts/snellius_env.sh
+source ./scripts/snellius_environment.sh
 export SIDREASONER_PROJECT_DIR="${SIDREASONER_PROJECT_DIR:-$SCRIPT_DIR}"
 export WANDB_MODE="${WANDB_MODE:-disabled}"
 unset ROCR_VISIBLE_DEVICES HIP_VISIBLE_DEVICES
