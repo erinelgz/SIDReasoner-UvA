@@ -17,6 +17,7 @@ from data_Qwen3 import EvalSidDataset
 from accelerate import Accelerator
 import random
 import bitsandbytes as bnb
+from verl.utils.sid_constraints import make_sid_prefix_allowed_tokens_fn
 
 
 if torch.cuda.is_available():
@@ -45,12 +46,12 @@ def set_seed(seed):
 
 
 def main(
-    base_model: str = "./output_dir/7Task-End2End_Qwen3_Games/final_checkpoint",
-    train_file: str = "./data/Amazon_Games/train/Video_Games_5_2016-10-2018-11.csv",
-    info_file: str = "./data/Amazon_Games/info/Video_Games_5_2016-10-2018-11.txt",
-    category: str = "Video_Games",
-    test_data_path: str = "./data/Amazon_Games/test/Video_Games_5_2016-10-2018-11_for_test.csv",
-    result_json_data: str = "./temp/test_results_Qwen3.json",
+    base_model: str = "/home/scur1249/Office_Products_checkpoint/merged",
+    train_file: str = "./data/Amazon/train/Office_Products_5_2016-10-2018-11.csv",
+    info_file: str = "./data/Amazon/info/Office_Products_5_2016-10-2018-11.txt",
+    category: str = "Office_Products",
+    test_data_path: str = "./data/Amazon/test/Office_Products_5_2016-10-2018-11_for_test.csv",
+    result_json_data: str = "./temp/test_results_Office_Qwen3.json",
     batch_size: int = 16,
     K: int = 0,
     seed: int = 42,
@@ -58,6 +59,7 @@ def main(
     max_new_tokens: int = 256,
     num_beams: int = 10,
     padding_side: str = "left",
+    index_file: str = "./data/Amazon/index/Office_Products.index.json",
 ):
     random.seed(seed)
     set_seed(seed)
@@ -78,85 +80,14 @@ def main(
     model = AutoModelForCausalLM.from_pretrained(base_model, torch_dtype=torch.bfloat16, device_map="auto")
     model.eval()
 
-    prefix_prompt = "\n</think>\n\n"
-    prefix_index = 3
-    with open(info_file, "r") as f:
-        info = f.readlines()
-        # Parse new format: semantic_id \t item_title \t item_id
-        semantic_ids = [line.split("\t")[0].strip() for line in info]
-        # Format for tokenization
-        info_semantic = [f"""{prefix_prompt}{_}\n""" for _ in semantic_ids]
-
     tokenizer = AutoTokenizer.from_pretrained(base_model)
-    # Create prefixID for semantic IDs (existing functionality)
-    if base_model.lower().find("llama") > -1:
-        prefixID = [tokenizer(_).input_ids[1:] for _ in info_semantic]
-    else:
-        prefixID = [tokenizer(_).input_ids for _ in info_semantic]
-
-    # Build hash_dict for semantic IDs (existing functionality)
-    hash_dict = dict()
-    # print(f"eos token: {tokenizer.eos_token_id}")
-    for index, ID in enumerate(prefixID):
-        ID.append(tokenizer.eos_token_id)
-        for i in range(prefix_index, len(ID)):
-            if i == prefix_index:
-                hash_number = get_hash(ID[:i])
-            else:
-                hash_number = get_hash(ID[prefix_index:i])
-            if hash_number not in hash_dict:
-                hash_dict[hash_number] = set()
-            hash_dict[hash_number].add(ID[i])
-        hash_number = get_hash(ID[prefix_index:])
-
-    # Convert sets to lists for both dictionaries
-    for key in hash_dict.keys():
-        hash_dict[key] = list(hash_dict[key])
-
-    def find_last_sublist(lst, sub):
-        """Find the last occurrence of sublist in list"""
-        if not sub:
-            return None
-        n, m = len(lst), len(sub)
-        for start in range(n - m, -1, -1):
-            if lst[start : start + m] == sub:
-                return start
-        return None
-
-    sep_ids = tokenizer(prefix_prompt, add_special_tokens=False)["input_ids"]
-    eos_id = tokenizer.eos_token_id
-
-    # Define prefix constraint functions
-    def prefix_allowed_tokens_fn_semantic(batch_id, input_ids):
-        input_ids = input_ids.tolist()
-        pos = find_last_sublist(input_ids, sep_ids)
-        if pos is None:
-            # "\n</think>\n\n" not detected
-            raise Exception(f"Error: Prefix prompt not found in input IDs - {tokenizer.decode(input_ids)}.")
-
-        # Calculate position after "\n</think>\n\n"
-        pos_after_sep = pos + len(sep_ids)
-        generated_after_sep = input_ids[pos_after_sep:]
-        current_pos = len(generated_after_sep)
-
-        if current_pos == 0:
-            # First token after prefix prompt, the hash key should be predix.
-            hash_number = get_hash(sep_ids)
-            if hash_number in hash_dict:
-                return hash_dict[hash_number]
-            else:
-                return [eos_id]
-        else:
-            # Subsequent tokens, the hash key should be generated tokens after prefix.
-            hash_number = get_hash(generated_after_sep)
-            if hash_number in hash_dict:
-                return hash_dict[hash_number]
-            else:
-                return [eos_id]
-
-    # Default to semantic constraints (backward compatibility)
-    prefix_allowed_tokens_fn = prefix_allowed_tokens_fn_semantic
-    # prefix_allowed_tokens_fn = prefix_allowed_tokens_fn_title
+    prefix_allowed_tokens_fn = make_sid_prefix_allowed_tokens_fn(
+        tokenizer,
+        index_file=index_file,
+        info_file=info_file,
+        eos_token_id=tokenizer.eos_token_id,
+        answer_separator="</think>\n\n",
+    )
 
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.pad_token_id = tokenizer.eos_token_id

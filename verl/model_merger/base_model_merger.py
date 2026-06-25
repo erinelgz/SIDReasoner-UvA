@@ -20,13 +20,12 @@ from typing import Optional
 
 import torch
 from accelerate import init_empty_weights
-from transformers import (
-    AutoConfig,
-    AutoModelForCausalLM,
-    AutoModelForTokenClassification,
-    AutoModelForVision2Seq,
-    GenerationConfig,
-)
+from transformers import AutoConfig, AutoModelForCausalLM, AutoModelForTokenClassification, GenerationConfig
+
+try:
+    from transformers import AutoModelForVision2Seq
+except ImportError:
+    AutoModelForVision2Seq = None
 
 from verl.utils import hf_processor, hf_tokenizer
 
@@ -194,6 +193,11 @@ class BaseModelMerger(ABC):
         elif "ForCausalLM" in self.model_config.architectures[0]:
             return AutoModelForCausalLM
         elif "ForConditionalGeneration" in self.model_config.architectures[0]:
+            if AutoModelForVision2Seq is None:
+                raise ImportError(
+                    "This Transformers build does not expose AutoModelForVision2Seq, "
+                    "which is required to merge vision-language checkpoints."
+                )
             return AutoModelForVision2Seq
 
         raise NotImplementedError(f"Unknown architecture {self.model_config.architectures}")

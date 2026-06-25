@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=slurm_output/%x-%j.out
 
+
 set -euo pipefail
 
 if [[ -n "${SLURM_SUBMIT_DIR:-}" && -f "${SLURM_SUBMIT_DIR}/pyproject.toml" ]]; then
@@ -42,6 +43,12 @@ unset CONDA_DEFAULT_ENV CONDA_PREFIX CONDA_PROMPT_MODIFIER CONDA_SHLVL
 module purge
 module load 2023
 module load CUDA/12.4.0
+
+# Install uv if not already present
+if ! command -v uv &> /dev/null; then
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    export PATH="${HOME}/.local/bin:${PATH}"
+fi
 
 export UV_CACHE_DIR="${UV_CACHE_DIR:-${PWD}/.cache/uv}"
 export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-${PWD}/.venv}"

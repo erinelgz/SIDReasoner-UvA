@@ -31,6 +31,18 @@ gpu_memory_utilization: 0.5
 # Whether to ignore EOS and continue generating after EOS is hit.
 ignore_eos: False
 
+# Restrict final recommendation answers to existing Semantic IDs after the answer separator.
+sid_constrained_decoding: False
+
+# Source of valid Semantic IDs for constrained decoding. Prefer the .index.json file.
+sid_index_file: null
+
+# Optional fallback/source for valid Semantic IDs in "semantic_id<TAB>title<TAB>item_id" format.
+sid_info_file: null
+
+# Constraining starts only after this marker appears in the generated sequence.
+sid_answer_separator: "</think>\n\n"
+
 # Whether to disable CUDA graph. Default True to allow cache freeing.
 enforce_eager: True
 

@@ -7,63 +7,39 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=slurm_output/%x-%j.out
 
-# === Usage ===
-# bash merge_verl_ckpt.sh /path/to/verl/checkpoint/actor
-#
-# Example:
-# bash merge_verl_ckpt.sh ./RecRL_with_Reasoning/Qwen3-1.7B_Mix2-50K_Games/global_step_10/actor
+# Usage:
+#   sbatch --export=CKPT_DIR=/path/to/actor,MERGED_DIR=/durable/model scripts/merge_fsdp_ckpt.sh
 
 set -euo pipefail
 
 if [[ -n "${SLURM_SUBMIT_DIR:-}" && -f "${SLURM_SUBMIT_DIR}/pyproject.toml" ]]; then
-    SCRIPT_DIR="${SLURM_SUBMIT_DIR}"
+    PROJECT_DIR="${SLURM_SUBMIT_DIR}"
 else
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fi
-cd "$SCRIPT_DIR"
+cd "$PROJECT_DIR"
 
 source ./scripts/snellius_env.sh
 
-CKPT_DIR="${1:-${CKPT_DIR:-./checkpoints/RecRL_Reasoning/Office_Products_stage3_rl_Qwen3-1.7B/global_step_100/actor}}"
+CKPT_DIR="${1:-${CKPT_DIR:-}}"
+MERGED_DIR="${2:-${MERGED_DIR:-}}"
 
-if [ -z "$CKPT_DIR" ]; then
-    echo "ERROR: Please provide a verl checkpoint directory."
-    echo "Usage: bash merge_verl_ckpt.sh /path/to/actor"
+if [[ -z "$CKPT_DIR" || -z "$MERGED_DIR" ]]; then
+    echo "ERROR: CKPT_DIR and MERGED_DIR are required."
+    echo "Usage: bash scripts/merge_fsdp_ckpt.sh /path/to/actor /durable/output"
     exit 1
 fi
 
-# Remove trailing slash if exists
 CKPT_DIR="${CKPT_DIR%/}"
-
-# Output directory
-MERGED_DIR="${CKPT_DIR}_merged"
 
 echo "Verl checkpoint directory: $CKPT_DIR"
 echo "Will save merged HF model to: $MERGED_DIR"
-echo ""
-
-
-MERGE_PY="./scripts/merge_fsdp_checkpoint.py"
-
-if [ ! -f "$MERGE_PY" ]; then
-    echo "ERROR: Cannot find merge_fsdp_ckpt.py in Verl installation."
-    echo "Expected at: $MERGE_PY"
-    exit 1
-fi
-
-echo "Using merge script: $MERGE_PY"
-echo ""
-
-# Run merge
-${PYTHON_CMD} "$MERGE_PY" \
+${PYTHON_CMD} ./scripts/merge_fsdp_checkpoint.py \
     --checkpoint "$CKPT_DIR" \
-    --output-dir "$MERGED_DIR"
+    --output-dir "$MERGED_DIR" \
+    --base-model "${BASE_MODEL:-/home/scur1249/Office_Products_checkpoint/merged}" \
+    --mode "${MERGE_MODE:-auto}" \
+    --use-cpu-init
 
-echo ""
 echo "Merge completed."
-echo "Merged HuggingFace model is saved to:"
-echo "   $MERGED_DIR"
-echo ""
-echo "You can load it with:"
-echo "   from transformers import AutoModelForCausalLM"
-echo "   model = AutoModelForCausalLM.from_pretrained('$MERGED_DIR')"
+echo "Merged Hugging Face model: $MERGED_DIR"

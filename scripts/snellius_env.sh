@@ -23,9 +23,19 @@ export TOKENIZERS_PARALLELISM="${TOKENIZERS_PARALLELISM:-false}"
 export PYTORCH_ALLOC_CONF="${PYTORCH_ALLOC_CONF:-expandable_segments:True}"
 export NVIDIA_TF32_OVERRIDE="${NVIDIA_TF32_OVERRIDE:-1}"
 
+# Snellius GPU jobs may inherit AMD/HIP visibility variables even on CUDA nodes.
+# VERL/Ray rejects ROCR_VISIBLE_DEVICES when CUDA_VISIBLE_DEVICES is also set.
+unset ROCR_VISIBLE_DEVICES HIP_VISIBLE_DEVICES
+export ROCR_VISIBLE_DEVICES=""
+export HIP_VISIBLE_DEVICES=""
+
 export NCCL_P2P_DISABLE="${NCCL_P2P_DISABLE:-1}"
 export NCCL_IB_DISABLE="${NCCL_IB_DISABLE:-1}"
 export NCCL_NET_GDR_LEVEL="${NCCL_NET_GDR_LEVEL:-0}"
+export WANDB_MODE="${WANDB_MODE:-disabled}"
+export WANDB_SILENT="${WANDB_SILENT:-true}"
+# vLLM V1 rejects per-request logits processors, which SID constrained decoding uses.
+export VLLM_USE_V1="${VLLM_USE_V1:-0}"
 
 if command -v uv >/dev/null 2>&1 && [[ -d "${UV_PROJECT_ENVIRONMENT}" ]]; then
     PYTHON_CMD="${PYTHON_CMD:-uv run --no-sync python}"

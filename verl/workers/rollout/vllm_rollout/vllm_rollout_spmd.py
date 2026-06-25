@@ -53,6 +53,7 @@ from vllm.worker.worker_base import WorkerWrapperBase
 
 from verl import DataProto
 from verl.utils.profiler import GPUMemoryLogger
+from verl.utils.sid_constraints import build_sid_logits_processor
 from verl.utils.torch_functional import get_response_mask, pad_2d_list_to_length
 from verl.workers.rollout.base import BaseRollout
 
@@ -63,6 +64,28 @@ logger.setLevel(os.getenv("VERL_LOGGING_LEVEL", "WARN"))
 # 1. support pp in vllm
 # 2. passing tokenizer is not necessary? no encoding/decoding is happending here
 # 3. simplify init logics
+
+
+def _patch_tokenizer_special_tokens_extended() -> None:
+    """Compatibility shim for vLLM with older Transformers tokenizers.
+
+    vLLM 0.8.x reads `all_special_tokens_extended`, but the Qwen2 tokenizer
+    class in this environment only exposes `all_special_tokens`. Apply the
+    fallback in the Ray worker process before vLLM initializes its tokenizer.
+    """
+    try:
+        from transformers.tokenization_utils_base import PreTrainedTokenizerBase
+    except Exception as exc:
+        logger.warning("Unable to patch tokenizer compatibility for vLLM: %s", exc)
+        return
+
+    if hasattr(PreTrainedTokenizerBase, "all_special_tokens_extended"):
+        return
+
+    def all_special_tokens_extended(self):
+        return self.all_special_tokens
+
+    PreTrainedTokenizerBase.all_special_tokens_extended = property(all_special_tokens_extended)
 
 
 # NOTE(sgm): add for verl. We can optimize it by making the dataloader yield List[int] without padding.
@@ -257,6 +280,7 @@ class vLLMRollout(BaseRollout):
         if config.get("limit_images", None):  # support for multi-image data
             engine_kwargs["limit_mm_per_prompt"] = {"image": config.get("limit_images")}
 
+        _patch_tokenizer_special_tokens_extended()
         self.inference_engine = LLM(
             model=model_path,
             enable_sleep_mode=config.free_cache_engine,
@@ -283,6 +307,8 @@ class vLLMRollout(BaseRollout):
         if config.free_cache_engine:
             self.inference_engine.sleep(level=1)
 
+        self.tokenizer = tokenizer
+
         kwargs = dict(
             n=1,
             logprobs=0,  # can be set to 0 and let actor to recompute
@@ -296,13 +322,33 @@ class vLLMRollout(BaseRollout):
             if hasattr(SamplingParams(), str(k)):
                 kwargs[k] = config.get(k)
         kwargs["n"] = 1  # already repeat in ray_trainer
+
+        if config.get("sid_constrained_decoding", False):
+            sid_index_file = config.get("sid_index_file", None)
+            sid_info_file = config.get("sid_info_file", None)
+            if not sid_index_file and not sid_info_file:
+                raise ValueError(
+                    "actor_rollout_ref.rollout.sid_constrained_decoding=True requires "
+                    "sid_index_file or sid_info_file."
+                )
+            if not hasattr(SamplingParams(), "logits_processors"):
+                raise RuntimeError("This vLLM version does not expose SamplingParams.logits_processors.")
+            kwargs["logits_processors"] = [
+                build_sid_logits_processor(
+                    tokenizer,
+                    index_file=sid_index_file,
+                    info_file=sid_info_file,
+                    eos_token_id=tokenizer.eos_token_id,
+                    answer_separator=config.get("sid_answer_separator", "</think>\n\n"),
+                )
+            ]
+
         print(f"kwargs: {kwargs}")
         self.sampling_params = SamplingParams(**kwargs)
 
         self.pad_token_id = tokenizer.pad_token_id
 
         # newly inserted variables for vllm beam search on recommendation tasks.
-        self.tokenizer = tokenizer
         self.truncate_marker = self.tokenizer.encode("</think>\n\n")
 
         self.activate_beam_search = (

@@ -1,4 +1,4 @@
-"""Utility to merge multi-GPU FSDP actor checkpoints into a single-card Hugging Face model.
+"""Merge VERL FSDP or LoRA actor checkpoints into a standalone Hugging Face model.
 
 Example
 -------
@@ -14,12 +14,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from verl.model_merger.base_model_merger import ModelMergerConfig
-from verl.model_merger.fsdp_model_merger import FSDPModelMerger
-
-
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Merge FSDP actor checkpoint into single-card HF format.")
+    parser = argparse.ArgumentParser(description="Merge a VERL actor checkpoint into standalone HF format.")
     parser.add_argument(
         "--checkpoint",
         type=str,
@@ -29,8 +25,20 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=str,
+        required=True,
+        help="Durable directory in which to write the standalone model.",
+    )
+    parser.add_argument(
+        "--base-model",
+        type=str,
         default=None,
-        help="Optional directory to write merged weights. Defaults to <checkpoint>/merged.",
+        help="Base Hugging Face model used by a LoRA checkpoint. Required when it cannot be read from the adapter.",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=("auto", "fsdp", "lora"),
+        default="auto",
+        help="Checkpoint type. Auto selects LoRA when actor/lora_adapter exists.",
     )
     parser.add_argument(
         "--trust-remote-code",
@@ -47,7 +55,7 @@ def _parse_args() -> argparse.Namespace:
 
 def _resolve_actor_dir(checkpoint: Path) -> Path:
     """Return the actor directory whether the input is global_step or actor itself."""
-    if checkpoint.name == "actor" and checkpoint.is_dir():
+    if (checkpoint / "fsdp_config.json").is_file():
         return checkpoint
     actor_dir = checkpoint / "actor"
     if actor_dir.is_dir():
@@ -55,18 +63,41 @@ def _resolve_actor_dir(checkpoint: Path) -> Path:
     raise FileNotFoundError(f"Could not locate actor directory under {checkpoint}")
 
 
-def main() -> None:
-    args = _parse_args()
+def _merge_lora(actor_dir: Path, output_dir: Path, base_model: str | None) -> None:
+    import json
 
-    checkpoint_path = Path(args.checkpoint).expanduser().resolve()
-    actor_dir = _resolve_actor_dir(checkpoint_path)
+    import torch
+    from peft import PeftModel
+    from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    if args.output_dir:
-        output_dir = Path(args.output_dir).expanduser().resolve()
-    else:
-        # save to "{original_dir}_merged"
-        output_dir = actor_dir.parent / f"{actor_dir.name}_merged"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    adapter_dir = actor_dir / "lora_adapter"
+    adapter_config_path = adapter_dir / "adapter_config.json"
+    if not adapter_config_path.is_file():
+        raise FileNotFoundError(f"Expected LoRA adapter config at {adapter_config_path}")
+
+    with adapter_config_path.open() as f:
+        adapter_config = json.load(f)
+    base_model = base_model or adapter_config.get("base_model_name_or_path")
+    if not base_model:
+        raise ValueError("--base-model is required because the adapter does not record its base model")
+
+    model = AutoModelForCausalLM.from_pretrained(
+        base_model,
+        torch_dtype=torch.bfloat16,
+        device_map="cpu",
+        trust_remote_code=True,
+    )
+    model = PeftModel.from_pretrained(model, adapter_dir)
+    model = model.merge_and_unload()
+    model.save_pretrained(output_dir, safe_serialization=True)
+
+    tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)
+    tokenizer.save_pretrained(output_dir)
+
+
+def _merge_fsdp(actor_dir: Path, output_dir: Path, args: argparse.Namespace) -> None:
+    from verl.model_merger.base_model_merger import ModelMergerConfig
+    from verl.model_merger.fsdp_model_merger import FSDPModelMerger
 
     hf_dir = actor_dir / "huggingface"
     if not hf_dir.is_dir():
@@ -90,6 +121,24 @@ def main() -> None:
     merger = FSDPModelMerger(config)
     merger.merge_and_save()
     merger.cleanup()
+
+
+def main() -> None:
+    args = _parse_args()
+
+    checkpoint_path = Path(args.checkpoint).expanduser().resolve()
+    actor_dir = _resolve_actor_dir(checkpoint_path)
+    output_dir = Path(args.output_dir).expanduser().resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    mode = args.mode
+    if mode == "auto":
+        mode = "lora" if (actor_dir / "lora_adapter" / "adapter_model.safetensors").is_file() else "fsdp"
+
+    if mode == "lora":
+        _merge_lora(actor_dir, output_dir, args.base_model)
+    else:
+        _merge_fsdp(actor_dir, output_dir, args)
 
     print(f"Merged checkpoint saved to {output_dir}")
 
