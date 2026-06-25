@@ -4,7 +4,7 @@
 #SBATCH --job-name=sid-stage3-rl
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
-#SBATCH --time=48:00:00
+#SBATCH --time=72:00:00
 #SBATCH --output=slurm_output/%x-%j.out
 
 # Tested successfully on the hiyouga/verl:ngc-th2.6.0-cu126-vllm0.8.4-flashinfer0.2.2-cxx11abi0 image.

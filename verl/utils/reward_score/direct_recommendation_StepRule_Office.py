@@ -18,6 +18,7 @@ from collections import defaultdict
 from pathlib import Path
 
 _SOLUTION_CLIP_CHARS = 50
+_PROJECT_DIR = Path(os.environ.get("SIDREASONER_PROJECT_DIR", Path(__file__).resolve().parents[3]))
 
 
 def extract_sid_tokens(s: str) -> list[str]:
@@ -126,12 +127,11 @@ def construct_prefix_allowed_hashmap(item_info_path):
 
 class MyRewardComputer:
     def __init__(self):
-        repo_root = Path(__file__).resolve().parents[3]
-        sid_info_file = os.environ.get(
-            "SID_INFO_FILE",
-            str(repo_root / "data/Amazon/info/Office_Products_5_2016-10-2018-11.txt"),
+        item_info_path = os.environ.get(
+            "SIDREASONER_OFFICE_INFO_FILE",
+            str(_PROJECT_DIR / "data/Amazon/info/Office_Products_5_2016-10-2018-11.txt"),
         )
-        self.sid_hash = construct_prefix_allowed_hashmap(sid_info_file)
+        self.sid_hash = construct_prefix_allowed_hashmap(item_info_path)
 
     def compute(
         self,
