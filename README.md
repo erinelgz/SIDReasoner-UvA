@@ -1,8 +1,8 @@
 # SIDReasoner
 
-This repository contains the code for **"SIDReasoner - Reasoning over Semantic IDs Enhances Generative Recommendation"**.
+This repository contains our reproduction and extension of the original **"SIDReasoner - Reasoning over Semantic IDs Enhances Generative Recommendation"** codebase.
 
-SIDReasoner is a generative recommendation framework that strengthens recommendation models with reasoning over semantic IDs. The repository provides the training scripts, evaluation scripts, data download workflow, and a Snellius-ready environment setup.
+SIDReasoner is a generative recommendation framework that strengthens recommendation models with reasoning over semantic IDs. We extended the original repository to support our academic reproduction study: we cleaned and documented the Snellius workflow, added a SASRec baseline, added a Yelp Restaurants transfer extension, added Office Products ablation utilities for reward design, rollout constraints, LoRA updates, and inference-time reasoning, and organized the training, evaluation, merging, and analysis scripts into a clearer release structure.
 
 ## Snellius Quick Start
 
@@ -149,11 +149,7 @@ The thinking-mode evaluation expects a merged Hugging Face checkpoint named `act
 sbatch scripts/merge_fsdp_checkpoint.sh ./checkpoints/RecRL_Reasoning/Office_Products_stage3_rl_Qwen3-1.7B/global_step_100/actor
 ```
 
-## Extensions
-
-In addition to the core SIDReasoner reproduction, this repository contains the extensions described in the accompanying report. These extensions are intended to make the release self-contained for comparison, ablation, and transfer experiments.
-
-### SASRec Baseline
+## Baseline
 
 The `sasrec_baseline/` directory contains the discriminative SASRec baseline used for comparison with SIDReasoner.
 
@@ -169,6 +165,10 @@ Run the baseline job from the `sasrec_baseline/` directory:
 cd sasrec_baseline
 sbatch sasrec_ce_full.job
 ```
+
+## Extensions
+
+In addition to the core SIDReasoner reproduction, this repository contains the extensions described in the accompanying report. These extensions are intended to make the release self-contained for ablation and transfer experiments.
 
 ### Yelp Dataset Extension
 
@@ -224,23 +224,6 @@ make install-dev
 
 ## Checkpoints
 
-Pretrained model checkpoints are available on Hugging Face:
+The original SIDReasoner authors provide pretrained model checkpoints on Hugging Face:
 
 https://huggingface.co/Sober-Clever/SIDReasoner-Models/tree/main
-
-## Citation
-
-If you find this work useful in your research, please consider citing:
-
-```bibtex
-@article{SIDReasoner,
-  title={Reasoning over Semantic IDs Enhances Generative Recommendation},
-  author={Yingzhi He and Yan Sun and Junfei Tan and Yuxin Chen and Xiaoyu Kong and Chunxu Shen and Xiang Wang and An Zhang and Tat-Seng Chua},
-  journal={arXiv preprint arXiv:2603.23183},
-  year={2026}
-}
-```
-
-## Acknowledgement
-
-This repo is built upon [MiniOneRec](https://github.com/AkaliKong/MiniOneRec).
