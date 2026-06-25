@@ -39,10 +39,7 @@ def metric_values(results: list[dict], metric: str) -> np.ndarray:
 
 
 def align_results(result_sets: dict[str, list[dict]]) -> dict[str, list[dict]]:
-    maps = {
-        name: {int(row["row_index"]): row for row in rows}
-        for name, rows in result_sets.items()
-    }
+    maps = {name: {int(row["row_index"]): row for row in rows} for name, rows in result_sets.items()}
     row_sets = [set(mapping) for mapping in maps.values()]
     if not row_sets or any(rows != row_sets[0] for rows in row_sets[1:]):
         raise ValueError("Final-test result files do not contain identical row IDs")
@@ -157,9 +154,7 @@ def adaptive_summary(
         "thinking_rate": float(mask.mean()),
         "metrics": summarize(adaptive),
         "reasoning_tokens": int(adaptive_tokens),
-        "reasoning_token_reduction_vs_always_think": (
-            1.0 - adaptive_tokens / total_tokens if total_tokens else 0.0
-        ),
+        "reasoning_token_reduction_vs_always_think": (1.0 - adaptive_tokens / total_tokens if total_tokens else 0.0),
         "vs_direct": paired_comparison(
             direct,
             adaptive,

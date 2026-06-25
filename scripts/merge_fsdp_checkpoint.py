@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Merge a VERL actor checkpoint into standalone HF format.")
     parser.add_argument(

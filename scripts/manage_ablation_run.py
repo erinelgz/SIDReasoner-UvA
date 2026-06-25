@@ -187,9 +187,9 @@ def checkpoint_status(variant: Variant) -> dict:
         status["reason"] = f"found {len(model_shards)}/{world_size} model shards"
     elif not all(path.is_file() for path in hf_files):
         status["reason"] = "Hugging Face metadata is incomplete"
-    elif variant.checkpoint_type == "lora" and not (
-        actor_path / "lora_adapter" / "adapter_model.safetensors"
-    ).is_file():
+    elif (
+        variant.checkpoint_type == "lora" and not (actor_path / "lora_adapter" / "adapter_model.safetensors").is_file()
+    ):
         status["reason"] = "LoRA adapter is missing"
     elif tracked_step < variant.target_step:
         status["reason"] = f"checkpoint tracker is at step {tracked_step}"
@@ -275,19 +275,13 @@ def build_manifest(artifact_root: Path) -> dict:
                 "latest_step": latest_step(log_text),
                 "online_validation": validation_series(log_text),
                 "configuration": {
-                    "resolved_hydra": str(
-                        artifact_root / "evidence" / "hydra" / variant.name / "config.yaml"
-                    ),
-                    "overrides": str(
-                        artifact_root / "evidence" / "hydra" / variant.name / "overrides.yaml"
-                    ),
+                    "resolved_hydra": str(artifact_root / "evidence" / "hydra" / variant.name / "config.yaml"),
+                    "overrides": str(artifact_root / "evidence" / "hydra" / variant.name / "overrides.yaml"),
                     "constrained_decoding": variant.constrained_decoding,
                     "checkpoint_type": variant.checkpoint_type,
                 },
                 "artifact_dir": str(artifact_dir),
-                "artifact_checksum_manifest": (
-                    str(raw_manifest_path) if raw_manifest is not None else None
-                ),
+                "artifact_checksum_manifest": (str(raw_manifest_path) if raw_manifest is not None else None),
                 "artifact_checksums": raw_manifest["files"] if raw_manifest is not None else {},
                 "merged_model": str(artifact_dir / "model"),
                 "merged_model_checksum_manifest": str(artifact_dir / "model.sha256"),

@@ -144,8 +144,7 @@ def compute_metrics(
         {
             "sid_pattern@1": sum(bool(SID_RE.fullmatch(prediction)) for prediction in first_predictions) / n,
             "catalog_valid@1": sum(
-                is_catalog_valid(prediction, result)
-                for prediction, result in zip(first_predictions, evaluated)
+                is_catalog_valid(prediction, result) for prediction, result in zip(first_predictions, evaluated)
             )
             / n,
             "exact_match@1": sum(prediction == target for prediction, target in zip(first_predictions, targets)) / n,

@@ -139,7 +139,11 @@ def codebook_compatibility(author_model_path: str, reference_model_path: str) ->
     return {
         "compatible": not missing_from_author and not missing_from_reference,
         "author": {"model_path": author_model_path, "counts": author["counts"], "total": len(author_tokens)},
-        "reference": {"model_path": reference_model_path, "counts": reference["counts"], "total": len(reference_tokens)},
+        "reference": {
+            "model_path": reference_model_path,
+            "counts": reference["counts"],
+            "total": len(reference_tokens),
+        },
         "common_tokens": len(author_tokens & reference_tokens),
         "missing_from_author": missing_from_author,
         "missing_from_reference": missing_from_reference,

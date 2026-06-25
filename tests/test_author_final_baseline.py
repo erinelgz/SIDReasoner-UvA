@@ -48,9 +48,7 @@ class AuthorFinalBaselineTests(unittest.TestCase):
             author.mkdir()
             reference.mkdir()
             (author / "added_tokens.json").write_text(json.dumps({"<a_1>": 1, "<b_0>": 2, "<c_0>": 3}))
-            (reference / "added_tokens.json").write_text(
-                json.dumps({"<a_0>": 1, "<a_1>": 2, "<b_0>": 3, "<c_0>": 4})
-            )
+            (reference / "added_tokens.json").write_text(json.dumps({"<a_0>": 1, "<a_1>": 2, "<b_0>": 3, "<c_0>": 4}))
             result = codebook_compatibility(str(author), str(reference))
             self.assertFalse(result["compatible"])
             self.assertEqual(result["missing_from_author_a_tokens"], ["<a_0>"])
@@ -61,9 +59,7 @@ class AuthorFinalBaselineTests(unittest.TestCase):
             author = root / "author"
             local_data = root / "Amazon"
             author.mkdir()
-            (author / "added_tokens.json").write_text(
-                json.dumps({"<a_1>": 1, "<b_0>": 2, "<c_0>": 3})
-            )
+            (author / "added_tokens.json").write_text(json.dumps({"<a_1>": 1, "<b_0>": 2, "<c_0>": 3}))
             locations = {
                 "test": local_data / "test" / "Office_Products_5_2016-10-2018-11.csv",
                 "info": local_data / "info" / "Office_Products_5_2016-10-2018-11.txt",

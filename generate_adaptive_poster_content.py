@@ -25,8 +25,7 @@ import numpy as np
 EXPECTED_EXAMPLES = 4_866
 EXPECTED_TEST_SHA256 = "c1967034e197a7837a8962f2556efaabc12eb5bb84e1fdc79cd0accbce71add5"
 DEFAULT_RESULT_ROOT = Path(
-    "/gpfs/work5/0/prjs2120/groups/group_06/checkpoints/SIDReasoner/"
-    "final_office_test_20260613"
+    "/gpfs/work5/0/prjs2120/groups/group_06/checkpoints/SIDReasoner/" "final_office_test_20260613"
 )
 DEFAULT_TEST_CSV = Path("data/Amazon/test/Office_Products_5_2016-10-2018-11.csv")
 DEFAULT_INFO_FILE = Path("data/Amazon/info/Office_Products_5_2016-10-2018-11.txt")
@@ -394,9 +393,7 @@ def summarize_adaptive_gate(
         dtype=bool,
     )
     direct_ndcg = np.asarray([ndcg_at_10(direct_rows[row_index]) for row_index in row_ids], dtype=np.float64)
-    generated_ndcg = np.asarray(
-        [ndcg_at_10(generated_rows[row_index]) for row_index in row_ids], dtype=np.float64
-    )
+    generated_ndcg = np.asarray([ndcg_at_10(generated_rows[row_index]) for row_index in row_ids], dtype=np.float64)
     adaptive_ndcg = np.where(should_think, generated_ndcg, direct_ndcg)
     generated_tokens = np.asarray(
         [generated_rows[row_index].get("reasoning_token_count", 0) for row_index in row_ids], dtype=np.float64
@@ -431,9 +428,7 @@ def summarize_model(
         )
     row_ids = sorted(direct_rows)
     direct_ndcg = np.asarray([ndcg_at_10(direct_rows[row_index]) for row_index in row_ids], dtype=np.float64)
-    generated_ndcg = np.asarray(
-        [ndcg_at_10(generated_rows[row_index]) for row_index in row_ids], dtype=np.float64
-    )
+    generated_ndcg = np.asarray([ndcg_at_10(generated_rows[row_index]) for row_index in row_ids], dtype=np.float64)
     reasoning_comparison = paired_bootstrap_delta(direct_ndcg, generated_ndcg)
     if reasoning_comparison["ci95"][1] >= 0:
         raise ValueError(f"{model_key} generated reasoning no longer has a supported test-set regression")
@@ -552,8 +547,7 @@ def build_evidence(
     test_rows = load_test_rows(test_csv)
     results = {
         model_key: {
-            mode: load_result_rows(result_root / model_key / mode / "result.json")
-            for mode in ("direct", "generated")
+            mode: load_result_rows(result_root / model_key / mode / "result.json") for mode in ("direct", "generated")
         }
         for model_key in MODEL_LABELS
     }

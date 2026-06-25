@@ -237,9 +237,9 @@ def load_external_reasonings(tokenizer, examples: list[dict], args) -> tuple[lis
 
 
 def direct_reasonings(examples: list[dict]) -> tuple[list[list[dict]], list[float]]:
-    return [
-        [_reasoning_record("", 0, False, False, example["row_index"])] for example in examples
-    ], [0.0 for _ in examples]
+    return [[_reasoning_record("", 0, False, False, example["row_index"])] for example in examples], [
+        0.0 for _ in examples
+    ]
 
 
 def build_reasoning_prompt(base_prompt: str, reasoning: str) -> str:
