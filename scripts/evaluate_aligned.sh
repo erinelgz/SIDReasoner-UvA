@@ -17,7 +17,7 @@ else
 fi
 cd "$PROJECT_DIR"
 
-source ./scripts/snellius_env.sh
+source ./scripts/snellius_environment.sh
 
 MODE="${MODE:-model}"
 BASE_MODEL="${BASE_MODEL:-/home/scur1249/Office_Products_checkpoint/merged}"

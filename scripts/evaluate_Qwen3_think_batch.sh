@@ -16,7 +16,7 @@ else
 fi
 cd "$SCRIPT_DIR"
 
-source ./scripts/snellius_env.sh
+source ./scripts/snellius_environment.sh
 
 # ============ CONFIGS ==============
 # Override these with environment variables before sbatch/bash if needed.

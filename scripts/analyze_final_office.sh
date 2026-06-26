@@ -5,7 +5,7 @@ set -x
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_DIR"
-source ./scripts/snellius_env.sh
+source ./scripts/snellius_environment.sh
 
 readonly RESULT_ROOT="/gpfs/work5/0/prjs2120/groups/group_06/checkpoints/SIDReasoner/final_office_test_20260613"
 readonly OUTPUT_DIR="${PROJECT_DIR}/experiments/final_office_test_20260613"

@@ -16,7 +16,7 @@ else
     PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fi
 cd "$PROJECT_DIR"
-source ./scripts/snellius_env.sh
+source ./scripts/snellius_environment.sh
 
 artifact_root="${ARTIFACT_ROOT:-/gpfs/work5/0/prjs2120/groups/group_06/checkpoints/SIDReasoner}"
 result_root="${RESULT_ROOT:-${artifact_root}/adaptive_reasoning_20260613}"

@@ -649,11 +649,11 @@ def main():
     print(f"  Test rows    : {len(test_df):,}")
     print()
     print("Next steps:")
-    print(f"  1. sbatch scripts/sft_Qwen3_enrich_yelp.sh")
-    print(f"  2. sbatch scripts/sft_reasoning_activation_yelp.sh")
-    print(f"  3. sbatch scripts/RL_training_script_yelp.sh")
-    print(f"  4. sbatch scripts/merge_fsdp_ckpt.sh <checkpoint_dir>")
-    print(f"  5. sbatch scripts/evaluate_Qwen3_yelp.sh")
+    print(f"  1. sbatch yelp_dataset_extenstion/sft_Qwen3_enrich_yelp.sh")
+    print(f"  2. sbatch yelp_dataset_extenstion/sft_reasoning_activation_yelp.sh")
+    print(f"  3. sbatch yelp_dataset_extenstion/RL_training_script_yelp.sh")
+    print(f"  4. sbatch scripts/merge_fsdp_checkpoint.sh <checkpoint_dir>")
+    print(f"  5. sbatch yelp_dataset_extenstion/evaluate_Qwen3_yelp.sh")
     print("=" * 60)
 
 

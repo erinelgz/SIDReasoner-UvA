@@ -10,7 +10,7 @@
 
 set -euo pipefail
 
-source ./scripts/snellius_env.sh
+source ./scripts/snellius_environment.sh
 
 CATEGORY="${CATEGORY:-Yelp_Restaurants}"
 DATASET="${DATASET:-Yelp_Restaurants_5core}"

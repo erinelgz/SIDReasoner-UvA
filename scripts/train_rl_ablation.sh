@@ -18,7 +18,7 @@ fi
 cd "$PROJECT_DIR"
 PROJECT_DIR="$(pwd -P)"
 
-source ./scripts/snellius_env.sh
+source ./scripts/snellius_environment.sh
 
 variants=(control no_validity no_constrained exact_only lora_no_validity lora_no_constrained)
 if [[ -n "${ABLATION:-}" ]]; then

@@ -17,7 +17,7 @@ else
 fi
 cd "$SCRIPT_DIR"
 
-source ./scripts/snellius_env.sh
+source ./scripts/snellius_environment.sh
 export WANDB_MODE=disabled
 
 CATEGORY="${CATEGORY:-Yelp_Restaurants}"

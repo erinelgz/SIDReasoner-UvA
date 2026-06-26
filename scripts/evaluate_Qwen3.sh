@@ -16,7 +16,7 @@ else
 fi
 cd "$SCRIPT_DIR"
 
-source ./scripts/snellius_env.sh
+source ./scripts/snellius_environment.sh
 
 CATEGORY="${CATEGORY:-Office_Products}"
 EXP_NAME="${EXP_NAME:-./output_dir/Office_Products_stage1_sft_Qwen3-1.7B/final_checkpoint}"
